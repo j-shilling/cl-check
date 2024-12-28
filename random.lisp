@@ -1,4 +1,13 @@
-(in-package #:cl-check)
+(defpackage #:cl-check.random
+  (:use #:cl)
+  (:local-nicknames (:t :transducers))
+  (:export #:make-splittable-random
+           #:next-fixnum
+           #:next-double
+           #:split
+           #:split-n))
+
+(in-package #:cl-check.random)
 
 (defconstant +phi+
   (/ (+ 1 (sqrt 5)) 2)
@@ -70,6 +79,7 @@ advantage of overflow that happens."
   (seed (default-random) :read-only t :type fixnum)
   (gamma +golden-gamma+ :read-only t :type fixnum))
 
+(declaim (ftype (function (&optional (or fixnum null)) splittable-random) make-splittable-random))
 (defun make-splittable-random (&optional (seed nil))
   "Create a `SPLITTABLE-RANDOM' from `SEED'. Generate a good `SEED' if not provided."
   (if seed
@@ -81,6 +91,7 @@ advantage of overflow that happens."
         (internal-make-splittable-random :seed (mix-fixnum s)
                                          :gamma (mix-gamma (fx+ s +golden-gamma+))))))
 
+(declaim (ftype (function (splittable-random) fixnum) next-fixnum))
 (defun next-fixnum (rng)
   "Draw the next random `FIXNUM' from `RNG'."
   (declare (type splittable-random rng))
@@ -88,12 +99,14 @@ advantage of overflow that happens."
         (gamma (splittable-random-gamma rng)))
     (mix-fixnum (fx+ seed gamma))))
 
+(declaim (ftype (function (splittable-random) double-float) next-double))
 (defun next-double (rng)
   "Draw the next random `DOUBLE-FLOAT' from `RNG'"
   (declare (type splittable-random rng))
   (* double-float-epsilon
      (ash (next-fixnum rng) 11)))
 
+(declaim (ftype (function (splittable-random) list) split))
 (defun split (rng)
   "Create to new `SPLITTABLE-RANDOM's that are statistically independent from each other."
   (declare (type splittable-random rng))
@@ -106,6 +119,7 @@ advantage of overflow that happens."
      (internal-make-splittable-random :seed seed-2 :gamma gamma)
      (internal-make-splittable-random :seed (mix-fixnum seed-1) :gamma gamma-1))))
 
+(declaim (ftype (function (splittable-random (integer 0 *)) list) split-n))
 (defun split-n (rng n)
   "Return a list of `N' new `SPLITTABLE-RANDOM's that are all independent
 from each other."
@@ -128,3 +142,31 @@ from each other."
                                                                        :gamma gamma-1)))
                         (do-split-n (- i 1) seed-2 (cons new-rng acc))))))
          (do-split-n (- n 1) seed nil))))))
+
+(declaim (ftype (function (&optional (or splittable-random null)) t::generator) lazy-random-states))
+(defun lazy-random-states (&optional (initial-state nil))
+  "Create a source that yields infinitely many `SPLITTABLE-RANDOM's, each
+independent from the rest. This source can then be passed to
+`:TRANSDUCERS/TRANSDUCE' to automate the splitting process.
+
+Ex.
+
+;; (:local-nicknames (:t :transducers))
+
+(t:transduce (t:take 10)
+             #'cons
+             (lazy-random-states))
+;;=> A list with 10 random number generators
+
+(t:transduce (t:comp
+               (t:take 10)
+               (t:map #'next-fixnum))
+             #'cons
+             (lazy-random-states))
+;;=> A list of 10 fixnums."
+  (let* ((rng (or initial-state (make-splittable-random)))
+         (func (lambda ()
+                 (destructuring-bind (rng-1 rng-2) (split rng)
+                   (setf rng rng-2)
+                   rng-1))))
+    (t::make-generator :func func)))
