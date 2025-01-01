@@ -84,7 +84,6 @@ advantage of overflow that happens."
   "Create a `SPLITTABLE-RANDOM' from `SEED'. Generate a good `SEED' if not provided."
   (if seed
       (progn
-        (declare (type fixnum seed))
         (internal-make-splittable-random :seed seed :gamma +golden-gamma+))
       (let ((s (fx+ (default-random)
                     (* 2 +golden-gamma+))))
