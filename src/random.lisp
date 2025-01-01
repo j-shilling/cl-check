@@ -1,13 +1,10 @@
-(defpackage #:cl-check.random
-  (:use #:cl)
-  (:local-nicknames (:t :transducers))
-  (:export #:make-splittable-random
-           #:next-fixnum
-           #:next-double
-           #:split
-           #:split-n))
+(in-package :cl-check.random)
 
-(in-package #:cl-check.random)
+(deftype seed ()
+  '(integer 0 *))
+
+(deftype gamma ()
+  '(integer 0 *))
 
 (defconstant +phi+
   (/ (+ 1 (sqrt 5)) 2)
@@ -75,20 +72,22 @@ advantage of overflow that happens."
          (logxor step3 #xaaaaaaaaaaaaaaaa)
          step3))))
 
-(defstruct (splittable-random (:constructor internal-make-splittable-random))
-  (seed (default-random) :read-only t :type fixnum)
-  (gamma +golden-gamma+ :read-only t :type fixnum))
+(defstruct (splittable-random
+            (:constructor %make-splittable-random))
+  (seed (error "Missing seed") :read-only t :type seed)
+  (gamma (error "Missing gamma") :read-only t :type gamma))
 
-(declaim (ftype (function (&optional (or fixnum null)) splittable-random) make-splittable-random))
-(defun make-splittable-random (&optional (seed nil))
-  "Create a `SPLITTABLE-RANDOM' from `SEED'. Generate a good `SEED' if not provided."
-  (if seed
-      (progn
-        (internal-make-splittable-random :seed seed :gamma +golden-gamma+))
-      (let ((s (fx+ (default-random)
-                    (* 2 +golden-gamma+))))
-        (internal-make-splittable-random :seed (mix-fixnum s)
-                                         :gamma (mix-gamma (fx+ s +golden-gamma+))))))
+(declaim (ftype (function (&optional (or (integer 0 *) null) (or (integer 0 *) null)) splittable-random) make-splittable-random))
+(defun make-splittable-random (&optional (seed nil) (gamma nil))
+  (when (or (not seed)
+            (not gamma))
+    (error "Not implemented"))
+  (check-type seed seed)
+  (check-type gamma gamma)
+  (%make-splittable-random :seed seed :gamma gamma))
+
+(defun next-word64 (rnd)
+  10)
 
 (declaim (ftype (function (splittable-random) fixnum) next-fixnum))
 (defun next-fixnum (rng)
