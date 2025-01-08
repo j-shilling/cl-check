@@ -5,6 +5,144 @@
 
 (in-suite :all-tests)
 
+(def-suite :bits
+  :description "Bit-wise operations"
+  :in :all-tests)
+
+(in-suite :bits)
+
+(test create-word-32
+  (for-all ((n (gen-integer :max (1- (expt 2 32)) :min 0)))
+    (let* ((as-word (bits:integer-word 32 n))
+           (as-integer (bits:word-integer as-word)))
+      (is (= n as-integer)))))
+
+(test create-word-64
+  (for-all ((n (gen-integer :max (1- (expt 2 64)) :min 0)))
+    (let* ((as-word (bits:integer-word 64 n))
+           (as-integer (bits:word-integer as-word)))
+      (is (= n as-integer)))))
+
+(test lshift-word-32
+  (for-all ((count (gen-integer :max 32 :min 0))
+            (n (gen-integer :max (1- (expt 2 32)) :min 0)))
+    (let* ((expected (bits:integer-word 32 (* n (expt 2 count))))
+           (actual (bits:lshift (bits:integer-word 32 n) count)))
+      (is (equal expected actual)))))
+
+(test lshift-word-64
+  (for-all ((count (gen-integer :max 64 :min 0))
+            (n (gen-integer :max (1- (expt 2 64)) :min 0)))
+    (let* ((expected (bits:integer-word 64 (* n (expt 2 count))))
+           (actual (bits:lshift (bits:integer-word 64 n) count)))
+      (is (equal expected actual)))))
+
+(test rshift-word-32
+  (for-all ((count (gen-integer :max 32 :min 0))
+            (n (gen-integer :max (1- (expt 2 32)) :min 0)))
+    (let* ((expected (bits:integer-word 32 (floor (/ n (expt 2 count)))))
+           (actual (bits:rshift (bits:integer-word 32 n) count)))
+      (is (equal expected actual)))))
+
+(test rshift-word-64
+  (for-all ((count (gen-integer :max 64 :min 0))
+            (n (gen-integer :max (1- (expt 2 64)) :min 0)))
+    (let* ((expected (bits:integer-word 64 (floor (/ n (expt 2 count)))))
+           (actual (bits:rshift (bits:integer-word 64 n) count)))
+      (is (equal expected actual)))))
+
+(test upcast
+  (for-all ((n1 (gen-integer :max (1- (expt 2 32)) :min 0))
+            (n2 (gen-integer :max (1- (expt 2 32)) :min 0))
+            (size1 (gen-one-element 32 64))
+            (size2 (gen-one-element 32 64)))
+    (let* ((word1 (bits:integer-word size1 n1))
+           (word2 (bits:integer-word size2 n2)))
+      (multiple-value-bind (new-word-1 new-word-2) (bits:upcast word1 word2)
+        (is (= n1 (bits:word-integer word1)))
+        (is (= n2 (bits:word-integer word2)))
+        (is (= (bits:word-size new-word-1)
+               (bits:word-size new-word-2)))))))
+
+(test xor
+  (for-all ((n1 (gen-integer :max (1- (expt 2 32)) :min 0))
+            (n2 (gen-integer :max (1- (expt 2 32)) :min 0))
+            (size1 (gen-one-element 32 64))
+            (size2 (gen-one-element 32 64)))
+    (let* ((word1 (bits:integer-word size1 n1))
+           (word2 (bits:integer-word size2 n2))
+           (result (bits:^ word1 word2))
+           (expected (bits::make-word (max (bits:word-size word1)
+                                     (bits:word-size word2)))))
+      (iter
+        (for i from 0 below 32)
+        (setf (aref expected i)
+              (if (or
+                   (and (= (aref word1 i) 0)
+                        (= (aref word2 i) 0))
+                   (and (> (aref word1 i) 0)
+                        (> (aref word2 i) 0)))
+                  0
+                  1)))
+      (is (= (bits:word-size result)
+             (max (bits:word-size word1)
+                  (bits:word-size word2))))
+      (is (equal expected result)))))
+
+(test and
+  (for-all ((n1 (gen-integer :max (1- (expt 2 32)) :min 0))
+            (n2 (gen-integer :max (1- (expt 2 32)) :min 0))
+            (size1 (gen-one-element 32 64))
+            (size2 (gen-one-element 32 64)))
+    (let* ((word1 (bits:integer-word size1 n1))
+           (word2 (bits:integer-word size2 n2))
+           (result (bits:& word1 word2))
+           (expected (bits::make-word (max (bits:word-size word1)
+                                     (bits:word-size word2)))))
+      (iter
+        (for i from 0 below 32)
+        (setf (aref expected i)
+              (if (and (> (aref word1 i) 0)
+                        (> (aref word2 i) 0))
+                  1
+                  0)))
+      (is (= (bits:word-size result)
+             (max (bits:word-size word1)
+                  (bits:word-size word2))))
+      (is (equal expected result)))))
+
+(test add
+  (for-all ((n1 (gen-integer :max (1- (expt 2 32)) :min 0))
+            (n2 (gen-integer :max (1- (expt 2 32)) :min 0))
+            (size1 (gen-one-element 32 64))
+            (size2 (gen-one-element 32 64)))
+    (let* ((word1 (bits:integer-word size1 n1))
+           (word2 (bits:integer-word size2 n2))
+           (result (bits:add word1 word2))
+           (expected (bits:integer-word (max (bits:word-size word1)
+                                             (bits:word-size word2))
+                                        (+ n1 n2))))
+      (is (equal expected result)))))
+
+(test mult
+  (for-all ((n1 (gen-integer :max (1- (expt 2 32)) :min 0))
+            (n2 (gen-integer :max (1- (expt 2 32)) :min 0))
+            (size1 (gen-one-element 32 64))
+            (size2 (gen-one-element 32 64)))
+    (let* ((word1 (bits:integer-word size1 n1))
+           (word2 (bits:integer-word size2 n2))
+           (result (bits:mult word1 word2))
+           (expected (bits:integer-word (max (bits:word-size word1)
+                                             (bits:word-size word2))
+                                        (* n1 n2))))
+      (is (equal expected result)))))
+
+(def-suite :random
+  :description "Splittable Random Number Generator"
+  :in :all-tests)
+
+(in-suite :random)
+
 (defun load-test-data ()
   (let* ((csv (cl-csv:read-csv #P"test-data.csv"))
          (header (car csv))
@@ -22,7 +160,7 @@
   (for-all ((test-data (apply #'gen-one-element *test-data*)))
     (let ((seed (read-from-string (cdr (assoc :seed test-data))))
           (gamma (read-from-string (cdr (assoc :gamma test-data))))
-          (expected-word64 (read-from-string(cdr (assoc :randword64 test-data))))
+          (expected-word64 (read-from-string (cdr (assoc :randword64 test-data))))
           ;; (expected-word32 (read-from-string(cdr (assoc :randword32 test-data))))
           ;; (expected-double (read-from-string(cdr (assoc :randdouble test-data))))
           ;; (expected-float (read-from-string(cdr (assoc :randfloat test-data))))

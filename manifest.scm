@@ -141,4 +141,6 @@ number, char index), current collection state")
   sbcl-fiveam
   sbcl-alexandria
   sbcl-cl-transducers
-  sbcl-cl-csv))
+  sbcl-cl-csv
+  sbcl-bit-smasher
+  sbcl-iterate))

@@ -3,7 +3,7 @@
   :author "Jake Shilling"
   :license  "GPL-3-or-later"
   :version "0.0.1"
-  :depends-on (:alexandria :transducers)
+  :depends-on (:alexandria :transducers :bit-smasher :iterate)
   :pathname "src/"
   :components ((:file "package")
                (:file "random"))
@@ -13,7 +13,7 @@
   :description "Tests for cl-check"
   :author "Jake Shilling"
   :license  "GPL-3-or-later"
-  :depends-on (:cl-check :fiveam)
+  :depends-on (:cl-check :cl-csv :fiveam)
   :pathname "t/"
   :components ((:file "package")
                (:file "tests" :depends-on ("package")))
