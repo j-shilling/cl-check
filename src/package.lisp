@@ -7,6 +7,7 @@
   (:use :cl :iterate)
   (:export #:word
            #:integer-word
+           #:coerce-word
            #:word-integer
            #:word-size
            #:lshift

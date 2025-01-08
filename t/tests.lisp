@@ -23,6 +23,43 @@
            (as-integer (bits:word-integer as-word)))
       (is (= n as-integer)))))
 
+(test coerce-word-from-word
+  (for-all ((n (gen-integer :max (1- (expt 2 64)) :min 0))
+            (size1 (gen-one-element 32 64))
+            (size2 (gen-one-element 32 64)))
+    (let* ((input (bits:integer-word size1 n))
+           (expected (bits::resize size2 (bits:integer-word size1 n)))
+           (actual (bits:coerce-word size2 input)))
+      (is (equal expected actual)))))
+
+(test coerce-word-from-integer
+  (for-all ((n (gen-integer :max (1- (expt 2 64)) :min 0))
+            (size (gen-one-element 32 64)))
+    (let* ((expected (bits:integer-word size n))
+           (actual (bits:coerce-word size n)))
+      (is (equal expected actual)))))
+
+(test coerce-word-from-real
+  (for-all ((n (gen-float))
+            (size (gen-one-element 32 64)))
+    (let* ((expected (bits:integer-word size (floor (abs n))))
+           (actual (bits:coerce-word size (abs n))))
+      (is (equal expected actual)))))
+
+(test coerce-word-from-string-integer
+  (for-all ((n (gen-integer :max (1- (expt 2 64)) :min 0))
+            (size (gen-one-element 32 64)))
+    (let* ((expected (bits:integer-word size n))
+           (actual (bits:coerce-word size (write-to-string n))))
+      (is (equal expected actual)))))
+
+(test coerce-word-from-string-real
+  (for-all ((n (gen-float))
+            (size (gen-one-element 32 64)))
+    (let* ((expected (bits:integer-word size (floor (abs n))))
+           (actual (bits:coerce-word size (write-to-string (abs n)))))
+      (is (equal expected actual)))))
+
 (test lshift-word-32
   (for-all ((count (gen-integer :max 32 :min 0))
             (n (gen-integer :max (1- (expt 2 32)) :min 0)))
@@ -158,10 +195,10 @@
 
 (test splittable-random
   (for-all ((test-data (apply #'gen-one-element *test-data*)))
-    (let ((seed (read-from-string (cdr (assoc :seed test-data))))
-          (gamma (read-from-string (cdr (assoc :gamma test-data))))
-          (expected-word64 (read-from-string (cdr (assoc :randword64 test-data))))
-          ;; (expected-word32 (read-from-string(cdr (assoc :randword32 test-data))))
+    (let ((seed (bits:coerce-word 64 (cdr (assoc :seed test-data))))
+          (gamma (bits:coerce-word 64 (cdr (assoc :gamma test-data))))
+          (expected-word64 (bits:word-integer (bits:coerce-word 64 (cdr (assoc :randword64 test-data)))))
+          (expected-word32 (bits:word-integer (bits:coerce-word 32 (cdr (assoc :randword32 test-data)))))
           ;; (expected-double (read-from-string(cdr (assoc :randdouble test-data))))
           ;; (expected-float (read-from-string(cdr (assoc :randfloat test-data))))
           )

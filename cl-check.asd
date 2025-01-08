@@ -3,10 +3,11 @@
   :author "Jake Shilling"
   :license  "GPL-3-or-later"
   :version "0.0.1"
-  :depends-on (:alexandria :transducers :bit-smasher :iterate)
+  :depends-on (:alexandria :transducers :iterate)
   :pathname "src/"
   :components ((:file "package")
-               (:file "random"))
+               (:file "bits")
+               (:file "random" :depends-on ("bits")))
   :in-order-to ((asdf:test-op (asdf:test-op :cl-check/test))))
 
 (asdf:defsystem :cl-check/test

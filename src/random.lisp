@@ -23,19 +23,32 @@
 
 ;; murmur has 13 mixer
 
-(defconstant +murmur-hash-3-shift-count-1+ 33)
-(defconstant +murmur-hash-3-multiplier-1+ (bits:integer-word 64 #xff51afd7ed558ccd))
-(defconstant +murmur-hash-3-shift-count-2+ 33)
-(defconstant +murmur-hash-3-multiplier-2+ (bits:integer-word 64 #xc4ceb9fe1a85ec53))
-(defconstant +murmur-hash-3-shift-count-3+ 33)
+(defmacro defconstant-once (name value &optional (doc nil))
+  "Define a global constant, only if it has not already been defined."
+  (let ((n name)
+        (v value)
+        (d doc))
+    `(defconstant ,n
+       (if (boundp ',n)
+           ,n
+           ,v)
+       ,d)))
+
+(defconstant-once +murmur-hash-3-shift-count-1+ 33)
+(defconstant-once +murmur-hash-3-multiplier-1+
+  (bits:integer-word 64 #xff51afd7ed558ccd))
+(defconstant-once +murmur-hash-3-shift-count-2+ 33)
+(defconstant-once +murmur-hash-3-multiplier-2+
+    (bits:integer-word 64 #xc4ceb9fe1a85ec53))
+(defconstant-once +murmur-hash-3-shift-count-3+ 33)
 
 ;; Variant 13
 
-(defconstant +murmur-hash-3-variant-13-shift-count-1+ 30)
-(defconstant +murmur-hash-3-variant-13-multiplier-1+ (bits:integer-word 64 #xbf58476d1ce4e5b9))
-(defconstant +murmur-hash-3-variant-13-shift-count-2+ 27)
-(defconstant +murmur-hash-3-variant-13-multiplier-2+ (bits:integer-word 64 #x94d049bb133111eb))
-(defconstant +murmur-hash-3-variant-13-shift-count-3+ 31)
+(defconstant-once +murmur-hash-3-variant-13-shift-count-1+ 30)
+(defconstant-once +murmur-hash-3-variant-13-multiplier-1+ (bits:integer-word 64 #xbf58476d1ce4e5b9))
+(defconstant-once +murmur-hash-3-variant-13-shift-count-2+ 27)
+(defconstant-once +murmur-hash-3-variant-13-multiplier-2+ (bits:integer-word 64 #x94d049bb133111eb))
+(defconstant-once +murmur-hash-3-variant-13-shift-count-3+ 31)
 
 ;;; Hashing Functions
 
@@ -84,24 +97,22 @@ multiplying the result by `MULTIPLIER'."
   (seed (error "Missing seed") :read-only t :type seed)
   (gamma (error "Missing gamma") :read-only t :type gamma))
 
-(declaim (ftype (function (&optional (or seed null) (or gamma null)) splittable-random) make-splittable-random))
+(declaim (ftype (function (&optional (or integer seed null) (or integer gamma null)) splittable-random) make-splittable-random))
 (defun make-splittable-random (&optional (seed nil) (gamma nil))
   (when (or (not seed)
             (not gamma))
     (error "Not implemented"))
-  (let ((s (etypecase seed
-             (word64 seed)
-             ((integer 0 *) (bits:integer-word 64 seed))))
-        (g (etypecase gamma
-             (word64 gamma)
-             ((integer 0 *) (bits:integer-word 64 gamma)))))
-    (%make-splittable-random :seed s :gamma g)))
+  (%make-splittable-random :seed (bits:coerce-word 64 seed)
+                           :gamma (bits:coerce-word 64 gamma)))
 
 ;;; Public interface
 
 (defun next-word64 (rnd)
-  (bits->int (mix-64 (next-seed rnd))))
+  (bits:word-integer (mix-64 (next-seed rnd))))
+
+(defun next-word32 (rnd)
+  (bits:word-integer (bits::resize 32 (mix-64 (next-seed rnd)))))
 
 (defun next-seed (rnd)
-  (bit+ (splittable-random-seed rnd)
-        (splittable-random-gamma rnd)))
+  (bits:add (splittable-random-seed rnd)
+            (splittable-random-gamma rnd)))

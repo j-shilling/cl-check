@@ -26,6 +26,34 @@ fit."
                 0))
       (finally (return (the (word *) buffer))))))
 
+(declaim (ftype (function ((integer 0 *) (word *)) (word *)) resize))
+(defun resize (size word)
+  "Return a new `WORD' from `WORD' that is expanded or truncated to `SIZE'."
+  (let ((buffer (make-word size)))
+    (iter
+      (for i from 0 below (min size (word-size word)))
+      (setf (aref buffer i)
+            (aref word i))
+      (finally (return (the (word *) buffer))))))
+
+(declaim (ftype (function ((integer 0 *) t) (word *)) coerce-word))
+(defun coerce-word (size n)
+  "Create a new `WORD' with `SIZE' by trying to interpret `N' as an integer."
+  (etypecase n
+    ((word *)
+     (resize size n))
+    (unsigned-byte
+     (integer-word size n))
+    (integer
+     (let ((word (integer-word size (abs n))))
+       (setf (aref word (1- size))
+             (if (< n 0) 1 0))
+       word))
+    (number
+     (coerce-word size (floor n)))
+    (string
+     (coerce-word size (floor (read-from-string n))))))
+
 (declaim (ftype (function ((word *)) (integer 0 *)) word-integer))
 (defun word-integer (word)
   "Return `WORD' as an `INTEGER'."
@@ -66,22 +94,15 @@ fit."
 the same size. If both `WORD1' and `WORD2' are already the same size,
 then they are returned; otherwise, a copy of the smaller word is made
 and adjusted to be the size of the larger one."
-  (labels ((resize (word size)
-             (let ((buffer (make-word size)))
-               (iter
-                 (for i from 0 below (word-size word))
-                 (setf (aref buffer i)
-                       (aref word i))
-                 (finally (return (the (word *) buffer)))))))
-    (let ((size1 (word-size word1))
-          (size2 (word-size word2)))
-      (cond
-        ((= size1 size2)
-         (values word1 word2))
-        ((> size1 size2)
-         (values word1 (resize word2 size1)))
-        (t
-         (values (resize word1 size2) word2))))))
+  (let ((size1 (word-size word1))
+        (size2 (word-size word2)))
+    (cond
+      ((= size1 size2)
+       (values word1 word2))
+      ((> size1 size2)
+       (values word1 (resize size1 word2)))
+      (t
+       (values (resize size2 word1) word2)))))
 
 (declaim (ftype (function ((word *)) boolean) word-zero-p))
 (defun word-zero-p (word)
