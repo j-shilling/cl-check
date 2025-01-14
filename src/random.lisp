@@ -90,7 +90,15 @@ multiplying the result by `MULTIPLIER'."
   +murmur-hash-3-variant-13-multiplier-2+
   +murmur-hash-3-variant-13-shift-count-3+)
 
+(defconstant-once +single-float-ulp+
+    (the single-float (/ 1.0 (bits:word-single-float (bits:lshift (bits:integer-word 32 1) 24)))))
+(defconstant-once +double-float-ulp+
+    (the double-float (/ 1.0 (bits:word-double-float (bits:lshift (bits:integer-word 64 1) 53)))))
+
 ;;; Splittable Random State
+
+(defconstant-once +golden-gamma+
+    (bits:integer-word 64 #x9e3779b97f4a7c15))
 
 (defstruct (splittable-random
             (:constructor %make-splittable-random))
@@ -99,11 +107,18 @@ multiplying the result by `MULTIPLIER'."
 
 (declaim (ftype (function (&optional (or integer seed null) (or integer gamma null)) splittable-random) make-splittable-random))
 (defun make-splittable-random (&optional (seed nil) (gamma nil))
-  (when (or (not seed)
-            (not gamma))
-    (error "Not implemented"))
-  (%make-splittable-random :seed (bits:coerce-word 64 seed)
-                           :gamma (bits:coerce-word 64 gamma)))
+  (let* ((s (if seed
+                (bits:coerce-word 64 seed)
+                (bits:integer-word 64 (random (expt 2 64)))))
+         (g (if gamma
+                (bits:coerce-word 64 gamma)
+                (mix-64-variant-13 (bits:add s +golden-gamma+)))))
+    (%make-splittable-random :seed s
+                             :gamma g)))
+
+(defun next-seed (rnd)
+  (bits:add (splittable-random-seed rnd)
+            (splittable-random-gamma rnd)))
 
 ;;; Public interface
 
@@ -113,6 +128,21 @@ multiplying the result by `MULTIPLIER'."
 (defun next-word32 (rnd)
   (bits:word-integer (bits::resize 32 (mix-64 (next-seed rnd)))))
 
-(defun next-seed (rnd)
-  (bits:add (splittable-random-seed rnd)
-            (splittable-random-gamma rnd)))
+(defun next-double-float (rnd)
+  (let ((word (bits:integer-word 64 (next-word64 rnd))))
+    (* (bits:word-double-float (bits:rshift word 11))
+       +double-float-ulp+)))
+
+(defun next-single-float (rnd)
+  (let ((word (bits:integer-word 32 (next-word32 rnd))))
+    (* (bits:word-single-float (bits:rshift word 8))
+       +single-float-ulp+)))
+
+(defun split (rnd)
+  (let* ((seed (splittable-random-seed rnd))
+         (gamma (splittable-random-gamma rnd))
+         (seed-1 (bits:add seed gamma))
+         (seed-2 (bits:add seed-1 gamma)))
+    (values
+     (%make-splittable-random :seed seed-2 :gamma gamma)
+     (%make-splittable-random :seed (mix-64 seed-1) :gamma (mix-64-variant-13 seed-2)))))

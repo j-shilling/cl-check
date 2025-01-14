@@ -66,6 +66,36 @@ fit."
                        0))
       (finally (return (the (integer 0 *) result))))))
 
+
+(defmacro word-float-fn (name bias mantissa-bits)
+  "Define a function that will read a `WORD' as an IEEE-754 floating point."
+  (let* ((t-name (symbol-name name))
+         (most-positive-t-name (intern (concatenate 'string "MOST-POSITIVE-" t-name)))
+         (f-name (intern (concatenate 'string "WORD-" t-name)))
+         (b bias)
+         (m mantissa-bits))
+    `(defun ,f-name (word)
+       (let* ((size (word-size word))
+              (sign (if (> (aref word (1- size)) 0) -1 1))
+              (exponent (- (word-integer (subseq word ,m (1- size))) ,b))
+              (fraction (subseq word 0 ,m)))
+         (iter
+           (with result = 0)
+           (for i from 0 below ,m)
+           (incf result (if (> (aref word i) 0)
+                            (expt 2 (- i (- ,m exponent)))
+                            0))
+           (finally (return (the ,(intern t-name) (float
+                                                  (* sign (+ result (expt 2 exponent)))
+                                                  ,most-positive-t-name)))))))))
+
+(defconstant +single-float-bias+ 127)
+(defconstant +single-float-mantissa-bits+ 23)
+(word-float-fn single-float +single-float-bias+ +single-float-mantissa-bits+)
+(defconstant +double-float-bias+ 1023)
+(defconstant +double-float-mantissa-bits+ 52)
+(word-float-fn double-float +double-float-bias+ +double-float-mantissa-bits+)
+
 (declaim (ftype (function ((word *) (integer 0 *)) (word *)) lshift))
 (defun lshift (word count)
   "Perform a bit-wise left shift of `WORD' by `COUNT'."

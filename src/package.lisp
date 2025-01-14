@@ -9,6 +9,8 @@
            #:integer-word
            #:coerce-word
            #:word-integer
+           #:word-single-float
+           #:word-double-float
            #:word-size
            #:lshift
            #:rshift
@@ -29,5 +31,5 @@
            #:split-n
            #:next-word64
            #:next-word32
-           #:next-double
-           #:next-float))
+           #:next-double-float
+           #:next-single-float))
