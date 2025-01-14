@@ -6,8 +6,8 @@
   :depends-on (:alexandria :transducers :iterate)
   :pathname "src/"
   :components ((:file "package")
-               (:file "bits")
-               (:file "random" :depends-on ("bits")))
+               (:file "bits" :depends-on ("package"))
+               (:file "random" :depends-on ("package" "bits")))
   :in-order-to ((asdf:test-op (asdf:test-op :cl-check/test))))
 
 (asdf:defsystem :cl-check/test
