@@ -6,6 +6,7 @@
 (defpackage :cl-check.bits
   (:use :cl :iterate)
   (:export #:word
+           #:resize
            #:integer-word
            #:coerce-word
            #:word-integer
@@ -16,12 +17,13 @@
            #:rshift
            #:upcast
            #:^
+           #:ior
            #:&
            #:add
            #:mult))
 
 (defpackage :cl-check.random
-  (:use :cl)
+  (:use :cl :iterate)
   (:local-nicknames (:t :transducers)
                     (:bits :cl-check.bits))
   (:export #:make-splittable-random

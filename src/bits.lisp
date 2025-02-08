@@ -150,6 +150,14 @@ The result will be the size of the larger word."
     (let ((result (make-word (word-size new-word1))))
       (bit-xor new-word1 new-word2 result))))
 
+(declaim (ftype (function ((word *) (word *)) (word *)) ior))
+(defun ior (word1 word2)
+  "Return the result of a bit-wise inclusive or on `WORD1' and `WORD2'.
+The result will be the size of the larger word."
+  (multiple-value-bind (new-word1 new-word2) (upcast word1 word2)
+    (let ((result (make-word (word-size new-word1))))
+      (bit-ior new-word1 new-word2 result))))
+
 (declaim (ftype (function ((word *) (word *)) (word *)) &))
 (defun & (word1 word2)
   "Return the result of a bit-wise and on `WORD1' and `WORD2'.

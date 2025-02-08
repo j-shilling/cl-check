@@ -90,6 +90,22 @@ multiplying the result by `MULTIPLIER'."
   +murmur-hash-3-variant-13-multiplier-2+
   +murmur-hash-3-variant-13-shift-count-3+)
 
+(defun mix-gamma (word)
+  (labels ((make-odd (w)
+             (bits:ior w (bits:integer-word 64 1)))
+           (pop-count (w)
+             (iter
+               (with result = 0)
+               (for i from 0 below 64)
+               (incf result (if (> (aref w i) 0) 1 0))
+               (finally (return result)))))
+    (let* ((z1 (mix-64-variant-13 word))
+           (z2 (make-odd z1))
+           (z3 (bits:^ z2 (bits:rshift z2 1))))
+      (if (>= (pop-count z3) 24)
+          z2
+          (bits:^ z2 (bits:integer-word #xaaaaaaaaaaaaaaaa 64))))))
+
 (defconstant-once +single-float-ulp+
     (the single-float (/ 1.0 (bits:word-single-float (bits:lshift (bits:integer-word 32 1) 24)))))
 (defconstant-once +double-float-ulp+
@@ -145,4 +161,4 @@ multiplying the result by `MULTIPLIER'."
          (seed-2 (bits:add seed-1 gamma)))
     (values
      (%make-splittable-random :seed seed-2 :gamma gamma)
-     (%make-splittable-random :seed (mix-64 seed-1) :gamma (mix-64-variant-13 seed-2)))))
+     (%make-splittable-random :seed (mix-64 seed-1) :gamma (mix-gamma seed-2)))))
