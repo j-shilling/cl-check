@@ -104,7 +104,7 @@ multiplying the result by `MULTIPLIER'."
            (z3 (bits:^ z2 (bits:rshift z2 1))))
       (if (>= (pop-count z3) 24)
           z2
-          (bits:^ z2 (bits:integer-word #xaaaaaaaaaaaaaaaa 64))))))
+          (bits:^ z2 (bits:integer-word 64 #xaaaaaaaaaaaaaaaa))))))
 
 (defconstant-once +single-float-ulp+
     (the single-float (/ 1.0 (bits:word-single-float (bits:lshift (bits:integer-word 32 1) 24)))))
